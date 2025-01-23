@@ -19,7 +19,8 @@ data class Action(
     val throttleEnabled: Boolean,
     val throttle: Throttle?,
     val id: String = UUIDs.base64UUID(),
-    val actionExecutionPolicy: ActionExecutionPolicy? = null
+    val actionExecutionPolicy: ActionExecutionPolicy? = null,
+    val timezone: String = "UTC"
 ) : BaseModel {
 
     init {
@@ -42,7 +43,8 @@ data class Action(
         sin.readBoolean(), // throttleEnabled
         sin.readOptionalWriteable(::Throttle), // throttle
         sin.readString(), // id
-        sin.readOptionalWriteable(::ActionExecutionPolicy) // actionExecutionPolicy
+        sin.readOptionalWriteable(::ActionExecutionPolicy), // actionExecutionPolicy
+        sin.readString() // timezone
     )
 
     override fun toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder {
@@ -52,6 +54,7 @@ data class Action(
             .field(DESTINATION_ID_FIELD, destinationId)
             .field(MESSAGE_TEMPLATE_FIELD, messageTemplate)
             .field(THROTTLE_ENABLED_FIELD, throttleEnabled)
+            .field(TIMEZONE_FIELD, timezone)
         if (subjectTemplate != null) {
             xContentBuilder.field(SUBJECT_TEMPLATE_FIELD, subjectTemplate)
         }
@@ -69,7 +72,8 @@ data class Action(
             ID_FIELD to id,
             NAME_FIELD to name,
             DESTINATION_ID_FIELD to destinationId,
-            THROTTLE_ENABLED_FIELD to throttleEnabled
+            THROTTLE_ENABLED_FIELD to throttleEnabled,
+            TIMEZONE_FIELD to timezone
         )
     }
 
@@ -98,6 +102,7 @@ data class Action(
         } else {
             out.writeBoolean(false)
         }
+        out.writeString(timezone)
     }
 
     companion object {
@@ -113,6 +118,7 @@ data class Action(
         const val SUBJECT = "subject"
         const val MESSAGE = "message"
         const val MESSAGE_ID = "messageId"
+        const val TIMEZONE_FIELD = "timezone"
 
         @JvmStatic
         @Throws(IOException::class)
@@ -125,6 +131,7 @@ data class Action(
             var throttleEnabled = false
             var throttle: Throttle? = null
             var actionExecutionPolicy: ActionExecutionPolicy? = null
+            var timezone: String = "UTC"
 
             XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, xcp.currentToken(), xcp)
             while (xcp.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -155,6 +162,9 @@ data class Action(
                             ActionExecutionPolicy.parse(xcp)
                         }
                     }
+                    TIMEZONE_FIELD -> {
+                        timezone = xcp.textOrNull() ?: "UTC"
+                    }
                     else -> {
                         throw IllegalStateException("Unexpected field: $fieldName, while parsing action")
                     }
@@ -173,7 +183,8 @@ data class Action(
                 throttleEnabled,
                 throttle,
                 id = requireNotNull(id),
-                actionExecutionPolicy = actionExecutionPolicy
+                actionExecutionPolicy = actionExecutionPolicy,
+                timezone = timezone
             )
         }
 
